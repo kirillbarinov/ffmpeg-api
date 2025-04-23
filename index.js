@@ -10,6 +10,10 @@ const upload = multer({ dest: 'uploads/' });
 app.use(express.urlencoded({ extended: true }));
 
 app.post('/merge', upload.single('audio'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("❌ Ошибка: аудиофайл не был передан как 'audio'");
+  }
+
   const videoUrl = req.body.video_url;
   const audioPath = req.file.path;
   const videoPath = `video_${Date.now()}.mp4`;
