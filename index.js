@@ -15,6 +15,7 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
   }
 
   const videoUrl = req.body.video_url;
+  const cutBy = req.body.cut_by || "audio"; // default: audio
   const audioPath = req.file.path;
   const videoPath = `video_${Date.now()}.mp4`;
   const outputPath = `output_${Date.now()}.mp4`;
@@ -26,8 +27,8 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
     response.data.pipe(videoStream);
     await new Promise(resolve => videoStream.on('finish', resolve));
 
-    console.log("🎬 Запускаем ffmpeg для объединения");
-    ffmpeg()
+    console.log("🎬 Запускаем ffmpeg");
+    const command = ffmpeg()
       .input(videoPath)
       .input(audioPath)
       .outputOptions([
@@ -35,7 +36,7 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
         '-map', '1:a:0',
         '-c:v', 'copy',
         '-c:a', 'aac',
-        '-shortest'
+        ...(cutBy === 'audio' ? ['-shortest'] : [])
       ])
       .on('start', (cmdLine) => {
         console.log("🚀 FFmpeg команда:", cmdLine);
@@ -52,8 +53,9 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
         console.error("❌ FFmpeg ошибка:", err.message);
         console.error("STDERR:", stderr);
         res.status(500).send(`ffmpeg exited with code 1:\n${stderr}`);
-      })
-      .save(outputPath);
+      });
+
+    command.save(outputPath);
 
   } catch (err) {
     console.error("❌ Ошибка обработки:", err.message);
