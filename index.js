@@ -20,25 +20,39 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
   const outputPath = `output_${Date.now()}.mp4`;
 
   try {
+    console.log("📥 Скачиваем видео по ссылке:", videoUrl);
     const response = await axios({ url: videoUrl, responseType: 'stream' });
     const videoStream = fs.createWriteStream(videoPath);
     response.data.pipe(videoStream);
     await new Promise(resolve => videoStream.on('finish', resolve));
 
+    console.log("🎬 Запускаем ffmpeg");
     ffmpeg()
       .input(videoPath)
       .input(audioPath)
       .outputOptions('-c:v copy', '-c:a aac', '-shortest')
-      .save(outputPath)
-      .on('end', () => {
-        res.download(outputPath);
+      .on('start', (cmdLine) => {
+        console.log("🚀 FFmpeg команда:", cmdLine);
       })
-      .on('error', err => {
-        res.status(500).send(err.message);
-      });
+      .on('end', () => {
+        console.log("✅ Готово! Отправляем файл.");
+        res.download(outputPath, () => {
+          // Удаляем временные файлы
+          fs.unlinkSync(videoPath);
+          fs.unlinkSync(audioPath);
+          fs.unlinkSync(outputPath);
+        });
+      })
+      .on('error', (err, stdout, stderr) => {
+        console.error("❌ FFmpeg ошибка:", err.message);
+        console.error("STDERR:", stderr);
+        res.status(500).send(`ffmpeg exited with code 1:\n${stderr}`);
+      })
+      .save(outputPath);
 
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error("❌ Ошибка загрузки или обработки:", err.message);
+    res.status(500).send("Ошибка при обработке запроса: " + err.message);
   }
 });
 
