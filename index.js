@@ -30,13 +30,13 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
     ffmpeg()
       .input(videoPath)
       .input(audioPath)
-      .outputOptions(
-        '-map 0:v:0',
-        '-map 1:a:0',
-        '-c:v copy',
-        '-c:a aac',
+      .outputOptions([
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+        '-c:v', 'copy',
+        '-c:a', 'aac',
         '-shortest'
-      )
+      ])
       .on('start', (cmdLine) => {
         console.log("🚀 FFmpeg команда:", cmdLine);
       })
