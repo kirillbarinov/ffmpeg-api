@@ -26,18 +26,23 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
     response.data.pipe(videoStream);
     await new Promise(resolve => videoStream.on('finish', resolve));
 
-    console.log("🎬 Запускаем ffmpeg");
+    console.log("🎬 Запускаем ffmpeg для объединения");
     ffmpeg()
       .input(videoPath)
       .input(audioPath)
-      .outputOptions('-c:v copy', '-c:a aac', '-shortest')
+      .outputOptions(
+        '-map 0:v:0',
+        '-map 1:a:0',
+        '-c:v copy',
+        '-c:a aac',
+        '-shortest'
+      )
       .on('start', (cmdLine) => {
         console.log("🚀 FFmpeg команда:", cmdLine);
       })
       .on('end', () => {
-        console.log("✅ Готово! Отправляем файл.");
+        console.log("✅ Готово! Отправляем видео.");
         res.download(outputPath, () => {
-          // Удаляем временные файлы
           fs.unlinkSync(videoPath);
           fs.unlinkSync(audioPath);
           fs.unlinkSync(outputPath);
@@ -51,7 +56,7 @@ app.post('/merge', upload.single('audio'), async (req, res) => {
       .save(outputPath);
 
   } catch (err) {
-    console.error("❌ Ошибка загрузки или обработки:", err.message);
+    console.error("❌ Ошибка обработки:", err.message);
     res.status(500).send("Ошибка при обработке запроса: " + err.message);
   }
 });
